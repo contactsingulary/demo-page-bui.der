@@ -21,7 +21,7 @@ export function DemoPage({ pages }: Props) {
       
       // Create a temporary div to parse the HTML
       const div = document.createElement('div');
-      div.innerHTML = page.scriptTag;
+      div.innerHTML = page.script_tag;
       
       // Get all script elements
       const scripts = Array.from(div.getElementsByTagName('script'));
@@ -66,7 +66,7 @@ export function DemoPage({ pages }: Props) {
         mountedRef.current = false;
       };
     }
-  }, [page?.scriptTag]);
+  }, [page?.script_tag]);
 
   useEffect(() => {
     if (page) {
@@ -81,7 +81,7 @@ export function DemoPage({ pages }: Props) {
   return (
     <div className="min-h-screen relative">
       <img 
-        src={page.imageUrl} 
+        src={page.image_url} 
         alt={page.name}
         className="w-full h-screen object-cover absolute top-0 left-0 -z-10"
       />
