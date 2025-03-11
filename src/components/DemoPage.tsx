@@ -36,11 +36,22 @@ export function DemoPage() {
     fetchPage();
   }, [id]);
 
+  // Clean up scripts when component unmounts or page changes
+  useEffect(() => {
+    return () => {
+      if (scriptContainerRef.current) {
+        scriptContainerRef.current.innerHTML = '';
+      }
+      mountedRef.current = false;
+    };
+  }, [id]);
+
+  // Load scripts when page data is available
   useEffect(() => {
     if (page && scriptContainerRef.current && !mountedRef.current) {
       mountedRef.current = true;
 
-      // Clear any existing scripts
+      // Clean any existing scripts
       scriptContainerRef.current.innerHTML = '';
       
       // Create a temporary div to parse the HTML
@@ -54,6 +65,9 @@ export function DemoPage() {
       const loadScript = (scriptElement: HTMLScriptElement): Promise<void> => {
         return new Promise((resolve, reject) => {
           const script = document.createElement('script');
+          
+          // Set a unique ID for the script based on the demo page ID
+          script.id = `demo-script-${page.id}`;
           script.type = 'text/javascript';
           
           if (scriptElement.src) {
@@ -61,7 +75,13 @@ export function DemoPage() {
             script.onerror = () => reject();
             script.src = scriptElement.src;
           } else {
-            script.textContent = scriptElement.textContent;
+            // For inline scripts, wrap the code in an IIFE to avoid global scope pollution
+            const wrappedCode = `
+              (function() {
+                ${scriptElement.textContent}
+              })();
+            `;
+            script.textContent = wrappedCode;
             resolve();
           }
           
@@ -82,21 +102,17 @@ export function DemoPage() {
       };
 
       loadScriptsSequentially();
-
-      // Cleanup function
-      return () => {
-        if (scriptContainerRef.current) {
-          scriptContainerRef.current.innerHTML = '';
-        }
-        mountedRef.current = false;
-      };
     }
-  }, [page?.script_tag]);
+  }, [page?.script_tag, page?.id]);
 
   useEffect(() => {
     if (page) {
       document.title = page.name;
     }
+
+    return () => {
+      document.title = 'Demo Page Builder';
+    };
   }, [page]);
 
   if (loading) {
@@ -131,7 +147,11 @@ export function DemoPage() {
         alt={page.name}
         className="w-full h-screen object-cover absolute top-0 left-0 -z-10"
       />
-      <div ref={scriptContainerRef} id="script-container" />
+      <div 
+        ref={scriptContainerRef} 
+        id={`script-container-${page.id}`} 
+        className="script-container"
+      />
     </div>
   );
 }
