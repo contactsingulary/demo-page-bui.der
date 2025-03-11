@@ -63,24 +63,25 @@ export function DemoPageForm({ onSubmit }: Props) {
         <label className="block text-sm font-medium text-gray-700">
           Hero Screenshot
         </label>
-        <div className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg">
+        <label
+          htmlFor="image"
+          className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
+        >
           <div className="space-y-1 text-center">
             <Upload className="mx-auto h-12 w-12 text-gray-400" />
-            <div className="flex text-sm text-gray-600">
-              <label htmlFor="image" className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
-                <span>Upload a file</span>
-                <input
-                  id="image"
-                  type="file"
-                  className="sr-only"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
-              </label>
+            <div className="flex text-sm text-gray-600 justify-center">
+              <span className="text-blue-600 hover:text-blue-500">Upload a file</span>
+              <input
+                id="image"
+                type="file"
+                className="sr-only"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
             </div>
             <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
           </div>
-        </div>
+        </label>
         {preview && (
           <div className="mt-4">
             <img src={preview} alt="Preview" className="max-h-48 mx-auto" />

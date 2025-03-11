@@ -75,9 +75,11 @@ function AppContent() {
 
     async function fetchPages() {
       try {
+        // Only fetch pages belonging to the current user
         const { data, error } = await supabase
           .from('demo_pages')
           .select('*')
+          .eq('user_id', user.id)  // Filter by current user's ID
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -92,22 +94,39 @@ function AppContent() {
 
     fetchPages();
 
-    // Subscribe to realtime changes
+    // Subscribe to realtime changes for the current user's pages only
     const channel = supabase
       .channel('demo_pages_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'demo_pages' },
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'demo_pages',
+          filter: `user_id=eq.${user.id}`  // Only listen to changes for current user's pages
+        },
         (payload) => {
+          console.log('Realtime event received:', payload);
+          
           if (payload.eventType === 'INSERT') {
+            console.log('Inserting new page:', payload.new);
             setPages(prev => [payload.new as DemoPageType, ...prev]);
           } else if (payload.eventType === 'DELETE') {
-            setPages(prev => prev.filter(page => page.id !== payload.old.id));
+            console.log('Deleting page:', payload.old);
+            // Immediately update the state to remove the deleted page
+            setPages(prev => {
+              const updatedPages = prev.filter(page => page.id !== payload.old.id);
+              console.log('Updated pages after deletion:', updatedPages);
+              return updatedPages;
+            });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -150,7 +169,10 @@ function AppContent() {
       }
 
       console.log('Page created successfully:', newPage);
-      navigate(`/demo/${newPage.id}`);
+      // Open demo page in new tab
+      window.open(`/demo/${newPage.id}`, '_blank');
+      // Navigate back to dashboard
+      navigate('/');
     } catch (error) {
       console.error('Detailed error:', error);
       setError(error instanceof Error ? error.message : 'Failed to create page. Please try again.');
@@ -193,6 +215,10 @@ function AppContent() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Optimistically update the UI
+      setPages(prev => prev.filter(page => page.id !== id));
+      
     } catch (error) {
       console.error('Error deleting page:', error);
       setError(error instanceof Error ? error.message : 'Failed to delete page. Please try again.');
@@ -256,7 +282,13 @@ function AppContent() {
                   <h1 className="text-3xl font-bold text-center mb-8">
                     Create Demo Page
                   </h1>
-                  <DemoPageForm onSubmit={handleCreatePage} />
+                  {loading ? (
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                    </div>
+                  ) : (
+                    <DemoPageForm onSubmit={handleCreatePage} />
+                  )}
                 </div>
               </div>
             </ProtectedRoute>
