@@ -1,16 +1,40 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import type { DemoPage as DemoPageType } from '../types';
+import { supabase } from '../lib/supabase';
 
-interface Props {
-  pages: DemoPageType[];
-}
-
-export function DemoPage({ pages }: Props) {
+export function DemoPage() {
   const { id } = useParams();
-  const page = pages.find(p => p.id === id);
+  const [page, setPage] = useState<DemoPageType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const scriptContainerRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(false);
+
+  // Fetch page data
+  useEffect(() => {
+    async function fetchPage() {
+      try {
+        if (!id) return;
+
+        const { data, error } = await supabase
+          .from('demo_pages')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+        setPage(data);
+      } catch (error) {
+        console.error('Error fetching page:', error);
+        setError('Failed to load demo page');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPage();
+  }, [id]);
 
   useEffect(() => {
     if (page && scriptContainerRef.current && !mountedRef.current) {
@@ -53,6 +77,7 @@ export function DemoPage({ pages }: Props) {
           }
         } catch (error) {
           console.error('Error loading scripts:', error);
+          setError('Failed to load demo scripts');
         }
       };
 
@@ -73,6 +98,27 @@ export function DemoPage({ pages }: Props) {
       document.title = page.name;
     }
   }, [page]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <a href="/" className="text-blue-600 hover:text-blue-700">
+            Return to Dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (!page) {
     return <Navigate to="/" replace />;

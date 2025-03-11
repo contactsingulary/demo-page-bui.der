@@ -16,8 +16,8 @@ create table demo_pages (
 -- Enable Row Level Security (RLS)
 alter table demo_pages enable row level security;
 
--- Create policy to allow anonymous read access
-create policy "Allow anonymous read access"
+-- Create policy to allow public read access
+create policy "Allow public read access"
   on demo_pages for select
   using (true);
 

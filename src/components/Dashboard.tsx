@@ -54,7 +54,6 @@ export function Dashboard({ pages, onDelete }: Props) {
                     <Link 
                       to={`/demo/${page.id}`}
                       className="text-blue-600 hover:text-blue-700"
-                      target="_blank"
                     >
                       View Demo
                     </Link>

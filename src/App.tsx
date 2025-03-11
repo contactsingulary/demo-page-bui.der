@@ -8,6 +8,46 @@ import { supabase, uploadImage, deleteImage, signOut } from './lib/supabase';
 import type { DemoPage as DemoPageType, DemoPageFormData } from './types';
 import { User } from '@supabase/supabase-js';
 
+// Protected Route Component
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = React.useState<User | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+      setLoading(false);
+      if (!session?.user) {
+        navigate('/login');
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      if (!session?.user) {
+        navigate('/login');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return <>{children}</>;
+}
+
 function AppContent() {
   const navigate = useNavigate();
   const [pages, setPages] = React.useState<DemoPageType[]>([]);
@@ -22,7 +62,6 @@ function AppContent() {
       setLoading(false);
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
@@ -171,78 +210,60 @@ function AppContent() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Login onSuccess={() => navigate('/')} />;
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="bg-red-50 p-4 rounded-lg">
-          <p className="text-red-600">{error}</p>
-          <button 
-            onClick={() => setError(null)}
-            className="mt-2 text-sm text-red-600 hover:text-red-700"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div>
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold">Demo Page Builder</h1>
-              </div>
-            </div>
-            <div className="flex items-center">
-              <button
-                onClick={handleSignOut}
-                className="ml-4 px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <Routes>
-        <Route 
-          path="/" 
-          element={<Dashboard pages={pages} onDelete={handleDeletePage} />}
-        />
-        <Route 
-          path="/create" 
+        {/* Public Routes */}
+        <Route path="/demo/:id" element={<DemoPage />} />
+        <Route path="/login" element={<Login onSuccess={() => navigate('/')} />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/"
           element={
-            <div className="min-h-screen bg-gray-50 py-12">
-              <div className="max-w-7xl mx-auto px-4">
-                <h1 className="text-3xl font-bold text-center mb-8">
-                  Create Demo Page
-                </h1>
-                <DemoPageForm onSubmit={handleCreatePage} />
+            <ProtectedRoute>
+              <div>
+                <div className="bg-white shadow">
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between h-16">
+                      <div className="flex">
+                        <div className="flex-shrink-0 flex items-center">
+                          <h1 className="text-xl font-bold">Demo Page Builder</h1>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <button
+                          onClick={handleSignOut}
+                          className="ml-4 px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <Dashboard pages={pages} onDelete={handleDeletePage} />
               </div>
-            </div>
-          } 
+            </ProtectedRoute>
+          }
         />
-        <Route 
-          path="/demo/:id" 
-          element={<DemoPage pages={pages} />} 
+        <Route
+          path="/create"
+          element={
+            <ProtectedRoute>
+              <div className="min-h-screen bg-gray-50 py-12">
+                <div className="max-w-7xl mx-auto px-4">
+                  <h1 className="text-3xl font-bold text-center mb-8">
+                    Create Demo Page
+                  </h1>
+                  <DemoPageForm onSubmit={handleCreatePage} />
+                </div>
+              </div>
+            </ProtectedRoute>
+          }
         />
+
+        {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
