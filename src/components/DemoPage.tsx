@@ -1,9 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, Link } from 'react-router-dom';
 import type { DemoPage as DemoPageType } from '../types';
 import { supabase } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
 
-export function DemoPage() {
+interface Props {
+  currentUser: User | null;
+  pages: DemoPageType[];
+}
+
+export function DemoPage({ currentUser, pages }: Props) {
   const { id } = useParams();
   const [page, setPage] = useState<DemoPageType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,8 +146,26 @@ export function DemoPage() {
     return <Navigate to="/" replace />;
   }
 
+  const isOwner = currentUser?.id === page.user_id;
+
   return (
     <div className="min-h-screen relative">
+      {isOwner && (
+        <div className="fixed top-4 right-4 z-50 flex gap-4">
+          <Link
+            to={`/edit/${page.id}`}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Edit Page
+          </Link>
+          <Link
+            to="/"
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Dashboard
+          </Link>
+        </div>
+      )}
       <img 
         src={page.image_url} 
         alt={page.name}

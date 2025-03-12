@@ -1,18 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload } from 'lucide-react';
-import type { DemoPageFormData } from '../types';
+import type { DemoPage, DemoPageFormData } from '../types';
 
 interface Props {
   onSubmit: (data: DemoPageFormData) => void;
+  initialData?: DemoPage;
+  submitLabel?: string;
 }
 
-export function DemoPageForm({ onSubmit }: Props) {
+export function DemoPageForm({ onSubmit, initialData, submitLabel = 'Create Demo Page' }: Props) {
   const [formData, setFormData] = useState<DemoPageFormData>({
-    name: '',
+    name: initialData?.name || '',
     image: null,
-    scriptTag: '',
+    scriptTag: initialData?.script_tag || '',
   });
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(initialData?.image_url || null);
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name,
+        image: null,
+        scriptTag: initialData.script_tag,
+      });
+      setPreview(initialData.image_url);
+    }
+  }, [initialData]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,7 +45,7 @@ export function DemoPageForm({ onSubmit }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.image) {
+    if (!initialData && !formData.image) {
       alert('Please upload an image');
       return;
     }
@@ -70,7 +83,9 @@ export function DemoPageForm({ onSubmit }: Props) {
           <div className="space-y-1 text-center">
             <Upload className="mx-auto h-12 w-12 text-gray-400" />
             <div className="flex text-sm text-gray-600 justify-center">
-              <span className="text-blue-600 hover:text-blue-500">Upload a file</span>
+              <span className="text-blue-600 hover:text-blue-500">
+                {initialData ? 'Change image' : 'Upload a file'}
+              </span>
               <input
                 id="image"
                 type="file"
@@ -107,7 +122,7 @@ export function DemoPageForm({ onSubmit }: Props) {
         type="submit"
         className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
       >
-        Create Demo Page
+        {submitLabel}
       </button>
     </form>
   );

@@ -4,6 +4,7 @@ import { DemoPageForm } from './components/DemoPageForm';
 import { DemoPage } from './components/DemoPage';
 import { Dashboard } from './components/Dashboard';
 import { Login } from './components/Login';
+import { EditPageContent } from './components/EditPageContent';
 import { supabase, uploadImage, deleteImage, signOut } from './lib/supabase';
 import type { DemoPage as DemoPageType, DemoPageFormData } from './types';
 import { User } from '@supabase/supabase-js';
@@ -112,10 +113,18 @@ function AppContent() {
             setPages(prev => [payload.new as DemoPageType, ...prev]);
           } else if (payload.eventType === 'DELETE') {
             console.log('Deleting page:', payload.old);
-            // Immediately update the state to remove the deleted page
             setPages(prev => {
               const updatedPages = prev.filter(page => page.id !== payload.old.id);
               console.log('Updated pages after deletion:', updatedPages);
+              return updatedPages;
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('Updating page:', payload.new);
+            setPages(prev => {
+              const updatedPages = prev.map(page => 
+                page.id === payload.new.id ? payload.new as DemoPageType : page
+              );
+              console.log('Updated pages after edit:', updatedPages);
               return updatedPages;
             });
           }
@@ -236,16 +245,102 @@ function AppContent() {
     }
   };
 
+  const handleEditPage = async (id: string, data: DemoPageFormData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!user?.id) {
+        throw new Error('You must be logged in to edit a page');
+      }
+
+      let imageUrl = undefined;
+      
+      // Only upload new image if one was selected
+      if (data.image) {
+        console.log('Uploading new image...');
+        imageUrl = await uploadImage(data.image);
+        console.log('Image uploaded successfully:', imageUrl);
+        
+        // Get the old image URL to delete it
+        const { data: oldPage } = await supabase
+          .from('demo_pages')
+          .select('image_url')
+          .eq('id', id)
+          .single();
+          
+        if (oldPage?.image_url) {
+          await deleteImage(oldPage.image_url);
+        }
+      }
+
+      // Update page in Supabase
+      const updateData: Partial<DemoPageType> = {
+        name: data.name,
+        script_tag: data.scriptTag,
+        user_id: user.id, // Ensure user_id is included in the update
+      };
+      
+      if (imageUrl) {
+        updateData.image_url = imageUrl;
+      }
+
+      const { data: updatedPage, error } = await supabase
+        .from('demo_pages')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', user.id) // Add user_id check for extra security
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+
+      console.log('Page updated successfully:', updatedPage);
+      
+      // Optimistically update the local state
+      setPages(prev => prev.map(page => 
+        page.id === id ? { ...page, ...updateData } : page
+      ));
+      
+      navigate(`/demo/${id}`);
+    } catch (error) {
+      console.error('Error updating page:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update page. Please try again.');
+      
+      // Try to clean up the uploaded image if update failed
+      if (imageUrl) {
+        try {
+          await deleteImage(imageUrl);
+        } catch (cleanupError) {
+          console.error('Failed to clean up image:', cleanupError);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div>
       <Routes>
         {/* Public Routes */}
-        <Route path="/demo/:id" element={<DemoPage />} />
+        <Route 
+          path="/demo/:id" 
+          element={
+            <DemoPage 
+              currentUser={user}
+              pages={pages}
+            />
+          } 
+        />
         <Route path="/login" element={<Login onSuccess={() => navigate('/')} />} />
 
         {/* Protected Routes */}
-        <Route
-          path="/"
+        <Route 
+          path="/" 
           element={
             <ProtectedRoute>
               <div>
@@ -277,17 +372,44 @@ function AppContent() {
           path="/create"
           element={
             <ProtectedRoute>
+            <div className="min-h-screen bg-gray-50 py-12">
+              <div className="max-w-7xl mx-auto px-4">
+                <h1 className="text-3xl font-bold text-center mb-8">
+                    Create Demo Page
+                </h1>
+                  {loading ? (
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                    </div>
+                  ) : (
+                <DemoPageForm onSubmit={handleCreatePage} />
+                  )}
+                </div>
+              </div>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/edit/:id"
+          element={
+            <ProtectedRoute>
               <div className="min-h-screen bg-gray-50 py-12">
                 <div className="max-w-7xl mx-auto px-4">
                   <h1 className="text-3xl font-bold text-center mb-8">
-                    Create Demo Page
+                    Edit Demo Page
                   </h1>
                   {loading ? (
                     <div className="flex justify-center items-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
                     </div>
                   ) : (
-                    <DemoPageForm onSubmit={handleCreatePage} />
+                    <EditPageContent
+                      pages={pages}
+                      onSubmit={(data) => {
+                        const id = window.location.pathname.split('/')[2];
+                        handleEditPage(id, data);
+                      }}
+                    />
                   )}
                 </div>
               </div>

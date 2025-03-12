@@ -51,14 +51,22 @@ export function Dashboard({ pages, onDelete }: Props) {
                     Created: {new Date(page.created_at).toLocaleDateString()}
                   </div>
                   <div className="flex justify-between items-center">
-                    <Link 
-                      to={`/demo/${page.id}`}
-                      className="text-blue-600 hover:text-blue-700"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      View Demo
-                    </Link>
+                    <div className="flex gap-4">
+                      <Link 
+                        to={`/demo/${page.id}`}
+                        className="text-blue-600 hover:text-blue-700"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        View Demo
+                      </Link>
+                      <Link
+                        to={`/edit/${page.id}`}
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        Edit
+                      </Link>
+                    </div>
                     {onDelete && (
                       <button
                         onClick={() => onDelete(page.id)}

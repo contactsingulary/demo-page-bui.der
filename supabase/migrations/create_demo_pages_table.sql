@@ -26,6 +26,11 @@ create policy "Allow authenticated insert"
   on demo_pages for insert
   with check (auth.role() = 'authenticated' and auth.uid() = user_id);
 
+-- Create policy to allow authenticated update
+create policy "Allow authenticated update"
+  on demo_pages for update
+  using (auth.role() = 'authenticated' and auth.uid() = user_id);
+
 -- Create policy to allow authenticated delete
 create policy "Allow authenticated delete"
   on demo_pages for delete
